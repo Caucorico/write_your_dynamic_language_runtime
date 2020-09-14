@@ -40,34 +40,88 @@ public class ASTInterpreter {
     private static final Visitor<JSObject, Object> VISITOR =
             new Visitor<JSObject, Object>()
                     .when(Block.class, (block, env) -> {
-                        throw new UnsupportedOperationException("TODO Block");
+                        for  ( var instr : block.instrs() ) {
+                            visit(instr, env);
+                        }
+                        return UNDEFINED;
                     })
-                    .when(Literal.class, (literal, env) -> {
-                        throw new UnsupportedOperationException("TODO Literal");
-                    })
+                    .when(Literal.class, (literal, env) -> literal.value())
                     
                     .when(FunCall.class, (funCall, env) -> {
-                        throw new UnsupportedOperationException("TODO FunCall");
+                        var value = visit(funCall.qualifier(), env);
+                        var function = as(value, JSObject.class, funCall );
+                        var arguments = funCall.args().stream().map(arg -> visit(arg, env)).toArray();
+                        return function.invoke(UNDEFINED, arguments);
                     })
-                    .when(LocalVarAccess.class, (localVarAccess, env) -> {
-                        throw new UnsupportedOperationException("TODO LocalVarAccess");
-                    })
+                    .when(LocalVarAccess.class, (localVarAccess, env) -> env.lookup(localVarAccess.name()))
+
                     .when(LocalVarAssignment.class, (localVarAssignment, env) -> {
-                        throw new UnsupportedOperationException("TODO LocalVarAssignment");
-                    }) 
+
+                        /*if ( localVarAssignment.declaration() && env.lookup(localVarAssignment.name()) != UNDEFINED) {
+                            throw new Failure("variable " + localVarAssignment.name() + " already defined");
+                        }*/
+
+                        if ( !localVarAssignment.declaration() && env.lookup(localVarAssignment.name()) == UNDEFINED) {
+                            throw new Failure("no variable " + localVarAssignment.name() + " defined");
+                        }
+
+                        var visit = visit(localVarAssignment.expr(), env);
+                        env.register(localVarAssignment.name(), visit);
+                        return UNDEFINED;
+                    })
                     .when(Fun.class, (fun, env) -> {
-                        throw new UnsupportedOperationException("TODO Fun");
+                        /*if (fun.name().isPresent()) {
+                            if ( env.lookup(fun.name().get()) != UNDEFINED ) {
+                                throw new Failure("function " + fun.name() + " already defined");
+                            }
+                        }*/
+                        var functionName = fun.name().orElse("lambda");
+
+                        JSObject.Invoker invoker = (jsObject, receiver, args) -> {
+                            if ( fun.parameters().size() != args.length ) {
+                                throw new Failure("Wrong number of arguments at " + fun.lineNumber());
+                            }
+
+                            var newEnv = JSObject.newEnv(env);
+                            newEnv.register("this", receiver);
+                            for ( var i = 0 ; i < args.length ; i++ ) {
+                                newEnv.register(fun.parameters().get(i), args[i]);
+                            }
+                            try {
+                                return visit(fun.body(), newEnv);
+                            } catch (ReturnError error) {
+                                return error.getValue();
+                            }
+                        };
+                        var function = JSObject.newFunction(functionName, invoker);
+                        fun.name().ifPresent(name -> env.register(name, function));
+                        return function;
                     })
                     .when(Return.class, (_return, env) -> {
-                        throw new UnsupportedOperationException("TODO Return");
+                        throw new ReturnError(visit(_return.expr(), env));
                     })
                     .when(If.class, (_if, env) -> {
-                        throw new UnsupportedOperationException("TODO If");
+                        var condition = visit(_if.condition(), env);
+                        if ( condition.equals(0) ) {
+                            return visit(_if.falseBlock(), env);
+                        } else {
+                            return visit(_if.trueBlock(), env);
+                        }
                     })
                     .when(New.class, (_new, env) -> {
-                        throw new UnsupportedOperationException("TODO New");
+                        var object = JSObject.newObject(null);
+                        _new.initMap().forEach((property, init) -> {
+                            var value = visit(init, env);
+                            object.register(property, value);
+                        });
+
+                        return object;
                     })
                     .when(FieldAccess.class, (fieldAccess, env) -> {
+                        if ( env.lookup(fieldAccess.name()) == UNDEFINED  ) {
+                            throw new Failure("Object " + fieldAccess.name() + " does not exist" );
+                        }
+                        
                         throw new UnsupportedOperationException("TODO FieldAccess");
                     })
                     .when(FieldAssignment.class, (fieldAssignment, env) -> {
