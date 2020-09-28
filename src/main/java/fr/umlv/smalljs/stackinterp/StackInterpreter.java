@@ -94,9 +94,8 @@ public class StackInterpreter {
 		for (;;) {
 			switch (instrs[pc++]) {
 				case Instructions.CONST -> {
-					throw new UnsupportedOperationException("TODO CONST");
 					// push constant from the instruction to the stack
-					// push(...)
+					push(stack, sp++, instrs[pc++]);
 				}
 				case Instructions.LOOKUP -> {
 					throw new UnsupportedOperationException("TODO LOOKUP");
@@ -143,7 +142,7 @@ public class StackInterpreter {
 					throw new UnsupportedOperationException("TODO SWAP");
 					// pop first value from the stack
 					//var value1 = ...
-					// pop second value from the stack
+					// pop second value from the stackACTIVATION_SIZE
 					//var value2 = ...
 					// push first value on top of the stack
 					//push(...);
