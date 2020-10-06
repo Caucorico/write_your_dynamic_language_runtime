@@ -18,7 +18,7 @@ public class VoidVisitor<E> {
   }
   
   public void visit(Expr expr, E env) {
-	  Class<? extends Expr> type = expr.getClass();  // implicit expr nullcheck
+    Class<? extends Expr> type = expr.getClass();  // implicit expr nullcheck
     Objects.requireNonNull(env);
     consumerMap
         .getOrDefault(type, unknownType(type))
