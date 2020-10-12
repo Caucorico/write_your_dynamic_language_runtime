@@ -24,7 +24,6 @@ public class JVMInterpreterTests {
     return outStream.toString(StandardCharsets.UTF_8).replace("\r\n", "\n");
   }
 
-  /*
   @Tag("Q2") @Test
   public void helloString() {
     assertEquals("", execute("\"hello\"\n"));
@@ -228,7 +227,7 @@ public class JVMInterpreterTests {
             """));
   }
   
-  @Tag("Q12") @Test
+  /*@Tag("Q12") @Test
   public void callFibo() {
     assertEquals("21\n", execute("""
             function fibo(n) {
