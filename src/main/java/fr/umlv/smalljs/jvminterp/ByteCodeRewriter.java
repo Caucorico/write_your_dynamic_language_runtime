@@ -21,6 +21,7 @@ import static org.objectweb.asm.Opcodes.V11;
 import java.io.PrintWriter;
 import java.lang.invoke.*;
 import java.lang.invoke.MethodHandles.Lookup;
+import java.util.ArrayList;
 import java.util.List;
 
 import fr.umlv.smalljs.rt.Failure;
@@ -284,40 +285,47 @@ public class ByteCodeRewriter {
                     mv.visitLabel(endLabel);
                 })
                 .when(New.class, (_new, env) -> {
-                    throw new UnsupportedOperationException("TODO New");
                     // call newObject
-                    //mv.visitInsn(ACONST_NULL);
-                    //mv.visitMethodInsn(INVOKESTATIC, JSOBJECT, "newObject", "(L" + JSOBJECT + ";)L" + JSOBJECT + ';', false);
+                    mv.visitInsn(ACONST_NULL);
+                    mv.visitMethodInsn(INVOKESTATIC, JSOBJECT, "newObject", "(L" + JSOBJECT + ";)L" + JSOBJECT + ';', false);
                     // for each initialization expression
-                    //_new.initMap().forEach((key, init) -> {
-                      //mv.visitInsn(DUP);
+                    _new.initMap().forEach((key, init) -> {
+                      mv.visitInsn(DUP);
                       // generate a string with the key
+                        mv.visitLdcInsn(key);
+                        visitor.visit(init, env);
                       // visit the initialization expression
                       // call register on the JSObject
-                      //mv.visitMethodInsn(INVOKEVIRTUAL, JSOBJECT, "register", "(Ljava/lang/String;Ljava/lang/Object;)V", false);
-                    //});
+                      mv.visitMethodInsn(INVOKEVIRTUAL, JSOBJECT, "register", "(Ljava/lang/String;Ljava/lang/Object;)V", false);
+                    });
                 })
                 .when(FieldAccess.class, (fieldAccess, env) -> {
-                    throw new UnsupportedOperationException("TODO FieldAccess");
                     // visit the receiver
+                    visitor.visit(fieldAccess.receiver(), env);
                     // generate an invokedynamic that goes a get through BSM_GET
+                    mv.visitInvokeDynamicInsn(fieldAccess.name(), "(Ljava/lang/Object;)Ljava/lang/Object;", BSM_GET, fieldAccess.name());
+
                 })
                 .when(FieldAssignment.class, (fieldAssignment, env) -> {
-                    throw new UnsupportedOperationException("TODO FieldAssignment");
                     // visit the receiver
+                    visitor.visit(fieldAssignment.receiver(), env);
                     // visit the expression
+                    visitor.visit(fieldAssignment.expr(), env);
                     // generate an invokedynamic that goes a set through BSM_SET
+                    mv.visitInvokeDynamicInsn(fieldAssignment.name(), "(Ljava/lang/Object;Ljava/lang/Object;)V", BSM_SET, fieldAssignment.name());
                 })
                 .when(MethodCall.class, (methodCall, env) -> {
-                    throw new UnsupportedOperationException("TODO MethodCall");
                     // visit the receiver
+                    visitor.visit(methodCall.receiver(), env);
                     // get all arguments
-                    //var args = methodCall.args();
+                    var args = methodCall.args();
                     // for each argument
-                    //for (var expr : args) {
-                      // visit it
-                    //}
+                    for (var expr : args) {
+                      visitor.visit(expr, env);
+                    }
                     // generate an invokedynamic that call BSM_METHODCALL
+                    var desc = MethodType.genericMethodType( 1 + args.size()).descriptorString();
+                    mv.visitInvokeDynamicInsn(methodCall.name(), desc, BSM_METHODCALL);
                 })
         ;
         return visitor;

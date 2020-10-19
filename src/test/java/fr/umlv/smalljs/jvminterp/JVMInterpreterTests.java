@@ -227,7 +227,7 @@ public class JVMInterpreterTests {
             """));
   }
   
-  /*@Tag("Q12") @Test
+  @Tag("Q12") @Test
   public void callFibo() {
     assertEquals("21\n", execute("""
             function fibo(n) {
@@ -380,5 +380,5 @@ public class JVMInterpreterTests {
                 object.foo(42);
                 object.foo(42);
                 """));
-  }*/
+  }
 }
